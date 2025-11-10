@@ -1,0 +1,11 @@
+targets:
+  $default:
+    builders:
+      openapi_generator_plus:
+        options:
+          # Указываем, где лежит наш swagger
+          input_spec_file: api/swagger.json
+          # Указываем, куда положить сгенерированный код
+          output_directory: lib/api_client
+          # Используем dio для запросов
+          generator: dio
