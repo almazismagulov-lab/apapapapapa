@@ -1,4 +1,7 @@
+import 'package:astana_explorer/api_client/lib/api.dart';
 import 'package:astana_explorer/screens/home_screen.dart';
+import 'package:astana_explorer/services/api_service.dart'; // <-- ТЕПЕРЬ ЭТОТ ИМПОРТ СРАБОТАЕТ
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -9,35 +12,65 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // Контроллеры для полей ввода
   final _loginController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  void _login() {
-    // Получаем текст из полей
-    final String login = _loginController.text;
-    final String password = _passwordController.text;
+  final ApiService _apiService = ApiService.instance;
+  bool _isLoading = false;
+  final String _deviceId = 'test-device'; // Захардкодим для теста
 
-    // Ваша проверка (admin / 123456)
-    if (login == 'admin' && password == '123456') {
-      // Если все верно, переходим на главный экран
-      // Используем pushReplacement, чтобы пользователь не мог нажать "Назад"
-      // и вернуться на экран входа
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
-      );
-    } else {
-      // Если ошибка - показываем уведомление
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Неверный логин или пароль'),
-          backgroundColor: Colors.red,
-        ),
-      );
+  Future<void> _login() async {
+    setState(() { _isLoading = true; });
+
+    final request = LoginRequest(
+      identifier: _loginController.text,
+      password: _passwordController.text,
+      deviceId: _deviceId,
+    );
+
+    try {
+      final response = await _apiService.api.auth.postLogin(loginRequest: request); //
+      
+      final AuthResponse? authData = response.data;
+
+      if (authData != null && authData.accessToken.isNotEmpty) {
+        await _apiService.saveTokens(authData, _deviceId);
+
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomeScreen()),
+          );
+        }
+      } else {
+        throw Exception("Ответ сервера не содержит токенов");
+      }
+
+    } on DioException catch (e) {
+      final errorMessage = e.response?.data?['message'] ?? 'Неверный логин или пароль';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(
+             content: Text('Произошла ошибка: ${e.toString()}'),
+             backgroundColor: Colors.red,
+           ),
+         );
+       }
+    } finally {
+      if (mounted) {
+        setState(() { _isLoading = false; });
+      }
     }
   }
 
-  // Не забываем очищать контроллеры
   @override
   void dispose() {
     _loginController.dispose();
@@ -56,35 +89,33 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Поле для логина
             TextField(
               controller: _loginController,
               decoration: const InputDecoration(
-                labelText: 'Логин',
+                labelText: 'Email или Username',
                 border: OutlineInputBorder(),
               ),
+              keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 16),
-            
-            // Поле для пароля
             TextField(
               controller: _passwordController,
-              obscureText: true, // Скрывает вводимый пароль
+              obscureText: true, 
               decoration: const InputDecoration(
                 labelText: 'Пароль',
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 24),
-            
-            // Кнопка "Войти"
-            ElevatedButton(
-              onPressed: _login,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(double.infinity, 50), // Кнопка во всю ширину
-              ),
-              child: const Text('Войти'),
-            ),
+            _isLoading
+              ? const CircularProgressIndicator()
+              : ElevatedButton(
+                  onPressed: _login,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  child: const Text('Войти'),
+                ),
           ],
         ),
       ),

@@ -1,20 +1,50 @@
 import 'package:astana_explorer/data/mock_data.dart';
 import 'package:astana_explorer/providers/game_provider.dart';
+import 'package:astana_explorer/screens/login_screen.dart'; // <-- ИМПОРТ ЭКРАНА ВХОДА
+import 'package:astana_explorer/services/api_service.dart'; // <-- ИМПОРТ API СЕРВИСА
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
+  Future<void> _logout(BuildContext context) async {
+    try {
+      await ApiService.instance.logout();
+      
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Ошибка при выходе: ${e.toString()}'))
+         );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Профиль Игрока'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Выйти',
+            onPressed: () => _logout(context), // Вызываем нашу функцию
+          ),
+        ],
       ),
       body: Consumer<GameProvider>(
         builder: (context, gameProvider, child) {
           
+          // ВНИМАНИЕ: Эти данные все еще "фейковые" из mock_data.dart
+          // Вам нужно будет обновить GameProvider, чтобы он брал их из API
           final int currentLevel = gameProvider.level;
           final int currentPoints = gameProvider.points;
           final int pointsForThisLevel = (currentLevel - 1) * 500;
@@ -47,7 +77,6 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 
-                // Прогресс Уровня
                 Text("Прогресс до Уровня ${currentLevel + 1}", style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
@@ -60,7 +89,6 @@ class ProfileScreen extends StatelessWidget {
                 
                 const Divider(height: 40),
 
-                // Статистика
                 Text("Статистика", style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 16),
                 Text(
