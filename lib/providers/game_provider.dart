@@ -7,55 +7,83 @@ import 'package:latlong2/latlong.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// --- 1. ИМПОРТИРУЕМ API ---
+import 'package:astana_explorer/services/api_service.dart';
+import 'package:astana_explorer/api_client/lib/api.dart';
+// -----------------------
+
 class GameProvider with ChangeNotifier {
   // -- КОНСТАНТЫ --
   static const double detectionRadius = 200; // 200 метров
 
-  // -- СОСТОЯНИЕ ИГРЫ --
+  // -- 2. ДОБАВЛЯЕМ ПЕРЕМЕННУЮ ДЛЯ РЕАЛЬНОГО ПРОФИЛЯ --
+  UserDto? _currentUser; 
+  // ---------------------------------------------
+
+  // -- СТАРЫЕ (ЛОКАЛЬНЫЕ) ДАННЫЕ (мы их больше не используем для профиля) --
   int _points = 0;
   Set<String> _discoveredLandmarkIds = {};
   Set<String> _unlockedAchievementIds = {};
-  
+
   // -- СОСТОЯНИЕ КАРТЫ И GPS --
   Position? _currentPosition;
   bool _isLoading = true;
   StreamSubscription<Position>? _positionStream;
   final Distance _distance = const Distance();
 
-  // -- ГЕТТЕРЫ (для доступа из UI) --
-  int get points => _points;
-  int get level => (_points / 500).floor() + 1; // 500 очков = 1 уровень
+  // -- 3. ОБНОВЛЯЕМ ГЕТТЕРЫ (для доступа из UI) --
+  // Они будут использовать данные из API, если они есть
+  int get points => _currentUser?.experience ?? _points;
+  int get level => _currentUser?.level ?? (_points / 500).floor() + 1;
+  String get username => _currentUser?.username ?? 'Исследователь';
+  String? get avatarUrl => _currentUser?.avatarUrl;
+  // ------------------------------------------
+
   Position? get currentPosition => _currentPosition;
   bool get isLoading => _isLoading;
   Set<String> get discoveredLandmarkIds => _discoveredLandmarkIds;
 
-  // Геттер для "тумана войны" - возвращает центры открытых зон
   List<LatLng> get discoveredHoleCenters {
     return _discoveredLandmarkIds.map((id) {
       return allLandmarks.firstWhere((lm) => lm.id == id).coordinates;
     }).toList();
   }
 
-  // Методы проверки
   bool isLandmarkDiscovered(String id) => _discoveredLandmarkIds.contains(id);
   bool isAchievementUnlocked(String id) => _unlockedAchievementIds.contains(id);
   int get discoveredLandmarksCount => _discoveredLandmarkIds.length;
-  
-  // <--- ВОТ ИСПРАВЛЕНИЕ: Мы делаем _unlockedAchievementIds "публичным"
   Set<String> get unlockedAchievementIds => _unlockedAchievementIds;
 
   // -- ИНИЦИАЛИЗАЦИЯ --
   GameProvider() {
-    // Вызывается при создании провайдера
     _init();
   }
 
   Future<void> _init() async {
     await _checkPermissions();
     startLocationTracking();
-    // Загрузка уже вызвана в main.dart
-    // await loadProgress();
+    // Загружаем и ФЕЙКОВЫЕ данные, и РЕАЛЬНЫЕ из API
+    await loadProgress(); // Загружает локальные ачивки/точки (пока что)
+    await fetchUserProfile(); // <-- 4. ВЫЗЫВАЕМ ЗАГРУЗКУ ПРОФИЛЯ
   }
+
+  // --- 5. НОВАЯ ФУНКЦИЯ ЗАГРУЗКИ ПРОФИЛЯ ---
+  Future<void> fetchUserProfile() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      // Вызываем метод API, который мы создали
+      final response = await ApiService.instance.api.profile.getMe();
+      _currentUser = response.data; // Сохраняем реального пользователя
+      print("Профиль успешно загружен: ${_currentUser?.username}");
+    } catch (e) {
+      print("Ошибка загрузки профиля: $e");
+      // Здесь можно обработать ошибку, например, разлогинить пользователя
+    }
+    _isLoading = false;
+    notifyListeners();
+  }
+  // ------------------------------------
 
   // -- ЛОГИКА GPS --
   Future<void> _checkPermissions() async {
@@ -65,49 +93,46 @@ class GameProvider with ChangeNotifier {
     }
   }
   Future<void> manuallyRefreshPosition() async {
-    // Показываем индикатор загрузки на карте
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Запрашиваем одну позицию с высокой точностью
       final Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      
+
       _currentPosition = position;
       print("Ручное обновление позиции: $position");
-      
-      // Проверяем, не открыли ли мы что-то
+
+      // TODO: Заменить эту логику на вызов API /api/v1/game/check-location
       _checkDiscoveredLandmarks(position);
 
     } catch (e) {
       print("Ошибка при ручном обновлении позиции: $e");
-      // Если у пользователя выключен GPS, он получит ошибку здесь
-      // Можно показать SnackBar с ошибкой
     }
 
-    // Убираем индикатор загрузки
     _isLoading = false;
     notifyListeners();
   }
-  // 👆 --- КОНЕЦ НОВОЙ ФУНКЦИИ --- 👆
 
   void startLocationTracking() {
     _positionStream = Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
         accuracy: LocationAccuracy.high,
-        distanceFilter: 20, // Обновлять каждые 20 метров
+        distanceFilter: 20,
       ),
     ).listen((Position position) {
       _currentPosition = position;
       print("Новая позиция: $position");
+
+      // TODO: Заменить эту логику на вызов API /api/v1/game/check-location
       _checkDiscoveredLandmarks(position);
-      notifyListeners(); // Уведомить UI о новой позиции
+      notifyListeners();
     });
   }
 
   // -- ЛОГИКА ИГРЫ (ОБНАРУЖЕНИЕ) --
+  // TODO: ЭТО ВСЕ НУЖНО БУДЕТ ЗАМЕНИТЬ НА ВЫЗОВЫ API
   void _checkDiscoveredLandmarks(Position position) {
     final userLocation = LatLng(position.latitude, position.longitude);
 
@@ -128,23 +153,20 @@ class GameProvider with ChangeNotifier {
 
   void _discoverLandmark(Landmark landmark) {
     _discoveredLandmarkIds.add(landmark.id);
-    _points += landmark.points;
+    _points += landmark.points; // Обновляем фейковые очки (для UI до перезагрузки)
 
     print("ОТКРЫТО: ${landmark.name}");
-    // TODO: Показать локальное уведомление
-    
+
     _checkAchievements(landmark);
     _saveProgress();
-    notifyListeners(); // Уведомить UI о новом открытии
+    notifyListeners();
   }
 
   void _checkAchievements(Landmark discoveredLandmark) {
-    // "Первый шаг"
     if (_discoveredLandmarkIds.length == 1 && !isAchievementUnlocked('first_step')) {
       _unlockAchievement('first_step');
     }
 
-    // "Архитектурный энтузиаст"
     int archCount = _discoveredLandmarkIds.where((id) {
       final lm = allLandmarks.firstWhere((lm) => lm.id == id);
       return lm.category == 'architecture';
@@ -160,16 +182,16 @@ class GameProvider with ChangeNotifier {
     _unlockedAchievementIds.add(id);
     _points += ach.pointsReward;
     print("ДОСТИЖЕНИЕ: ${ach.title}");
-    // TODO: Показать уведомление
   }
 
   // -- ЛОГИКА СОХРАНЕНИЯ/ЗАГРУЗКИ --
+  // TODO: Это будет загружать только ачивки/точки, пока мы не перенесем и их на API
   Future<void> _saveProgress() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('discoveredLandmarkIds', _discoveredLandmarkIds.toList());
     await prefs.setStringList('unlockedAchievementIds', _unlockedAchievementIds.toList());
-    await prefs.setInt('userPoints', _points);
-    print("Прогресс сохранен!");
+    // await prefs.setInt('userPoints', _points); // Больше не сохраняем очки локально
+    print("Локальный прогресс (ачивки/точки) сохранен!");
   }
 
   Future<void> loadProgress() async {
@@ -179,14 +201,13 @@ class GameProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _discoveredLandmarkIds = Set.from(prefs.getStringList('discoveredLandmarkIds') ?? []);
     _unlockedAchievementIds = Set.from(prefs.getStringList('unlockedAchievementIds') ?? []);
-    _points = prefs.getInt('userPoints') ?? 0;
-    
+    // _points = prefs.getInt('userPoints') ?? 0; // Больше не загружаем очки
+
     _isLoading = false;
-    print("Прогресс загружен!");
+    print("Локальный прогресс (ачивки/точки) загружен!");
     notifyListeners();
   }
 
-  // Очистка при выходе
   @override
   void dispose() {
     _positionStream?.cancel();

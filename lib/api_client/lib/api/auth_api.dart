@@ -19,6 +19,7 @@ class AuthApi {
     );
     // Вручную преобразуем Map<String, dynamic> в наш класс AuthResponse
     final authData = AuthResponse.fromJson(response.data);
+    print(authData.accessToken);
     return Response(
       data: authData,
       requestOptions: response.requestOptions,

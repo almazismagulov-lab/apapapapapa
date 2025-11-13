@@ -4,6 +4,7 @@ publish_to: 'none'
 
 version: 1.0.0+1
 
+# Версия SDK из вашего pubspec.lock
 environment:
   sdk: '>=3.9.0 <4.0.0'
 
@@ -14,19 +15,23 @@ dependencies:
   flutter:
     sdk: flutter
   
+  # Карты и геолокация
   flutter_map: ^6.1.0
   latlong2: ^0.9.0
   geolocator: ^11.1.0
   permission_handler: ^11.4.0
   provider: ^6.1.5+1
   shared_preferences: ^2.5.3
+
+  # Утилиты
   vector_math: ^2.2.0
   cupertino_icons: ^1.0.8
 
-  # --- ПАКЕТЫ ДЛЯ API ---
+  # --- ПАКЕТЫ ДЛЯ API (РУЧНОЙ МЕТОД) ---
   dio: ^5.4.3+1
   flutter_secure_storage: ^9.0.0
-  # ---------------------
+  cached_network_image: ^3.3.1
+  # -----------------------------------
 
 #
 # 2. ЗАВИСИМОСТИ ДЛЯ РАЗРАБОТКИ
@@ -37,11 +42,7 @@ dev_dependencies:
   
   flutter_lints: ^3.0.0
 
-  # --- ПАКЕТЫ ДЛЯ ГЕНЕРАЦИИ КОДА ---
-  build_runner: ^2.4.9
-  openapi_generator_plus: ^5.0.0 # <-- ВОТ ОН, В ПРАВИЛЬНОМ МЕСТЕ
-  json_serializable: ^6.8.0
-  # -------------------------------
+  # (Здесь больше нет openapi_generator_plus)
 
 flutter:
   uses-material-design: true

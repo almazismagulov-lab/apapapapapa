@@ -15,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _loginController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  // Получаем ЕДИНЫЙ экземпляр ApiService
   final ApiService _apiService = ApiService.instance;
   bool _isLoading = false;
   final String _deviceId = 'test-device'; // Захардкодим для теста
@@ -29,12 +30,16 @@ class _LoginScreenState extends State<LoginScreen> {
     );
 
     try {
+      // Вызываем API через наш сервис
       final response = await _apiService.api.auth.postLogin(loginRequest: request); //
       
       final AuthResponse? authData = response.data;
 
       if (authData != null && authData.accessToken.isNotEmpty) {
+        // Сохраняем токены через наш сервис
         await _apiService.saveTokens(authData, _deviceId);
+        final avatarka = response.data!.user.avatarUrl;
+        print(avatarka);
 
         if (mounted) {
           Navigator.of(context).pushReplacement(

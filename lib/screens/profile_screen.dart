@@ -1,9 +1,11 @@
 import 'package:astana_explorer/data/mock_data.dart';
 import 'package:astana_explorer/providers/game_provider.dart';
-import 'package:astana_explorer/screens/login_screen.dart'; // <-- ИМПОРТ ЭКРАНА ВХОДА
-import 'package:astana_explorer/services/api_service.dart'; // <-- ИМПОРТ API СЕРВИСА
+import 'package:astana_explorer/screens/login_screen.dart'; 
+import 'package:astana_explorer/services/api_service.dart'; 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+// 1. ИМПОРТИРУЕМ ПАКЕТ АВАТАРОК
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -36,22 +38,27 @@ class ProfileScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Выйти',
-            onPressed: () => _logout(context), // Вызываем нашу функцию
+            onPressed: () => _logout(context),
           ),
         ],
       ),
       body: Consumer<GameProvider>(
         builder: (context, gameProvider, child) {
           
-          // ВНИМАНИЕ: Эти данные все еще "фейковые" из mock_data.dart
-          // Вам нужно будет обновить GameProvider, чтобы он брал их из API
+          // --- 2. ЭТИ ДАННЫЕ ТЕПЕРЬ БЕРУТСЯ ИЗ API ---
           final int currentLevel = gameProvider.level;
           final int currentPoints = gameProvider.points;
-          final int pointsForThisLevel = (currentLevel - 1) * 500;
-          final int pointsForNextLevel = currentLevel * 500;
+          final String username = gameProvider.username;
+          final String? avatarUrl = gameProvider.avatarUrl;
+          // ------------------------------------------
+
+          // (Эта логика все еще фейковая, т.к. allLandmarks - локальные)
+          // TODO: Заменить '500' на LevelCalculator.GetRequiredExperience(user.Level) из бэкенда
+          final int pointsForThisLevel = (currentLevel - 1) * 100; // Используем 100, как в бэкенде
+          final int pointsForNextLevel = currentLevel * 100;      // Используем 100, как в бэкенде
           final double levelProgress = (currentPoints - pointsForThisLevel) / (pointsForNextLevel - pointsForThisLevel);
-          final int totalLandmarks = allLandmarks.length;
-          final int discoveredLandmarks = gameProvider.discoveredLandmarksCount;
+          final int totalLandmarks = allLandmarks.length; // TODO: Заменить на реальное кол-во
+          final int discoveredLandmarks = gameProvider.discoveredLandmarksCount; // TODO: Заменить на реальное кол-во
       
 
           return Padding(
@@ -60,35 +67,54 @@ class ProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
+                  // --- 3. ОБНОВЛЕННЫЙ АВАТАР ---
                   child: CircleAvatar(
                     radius: 50,
-                    child: Text(
-                      currentLevel.toString(),
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(color: Colors.white),
-                    ),
+                    // Используем фон по умолчанию, если URL нет
+                    backgroundColor: Colors.teal.shade800,
+                    // Загружаем аватарку по URL (та, которую вы прислали)
+                    backgroundImage: avatarUrl != null
+                        ? CachedNetworkImageProvider(avatarUrl)
+                        : null, 
+                    child: avatarUrl == null 
+                      // Если URL нет, показываем иконку
+                      ? const Icon(Icons.person, size: 50, color: Colors.white)
+                      // Если URL есть, показываем уровень поверх
+                      : Text( 
+                          currentLevel.toString(),
+                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            color: Colors.white,
+                            // Тень для читаемости
+                            shadows: [Shadow(blurRadius: 4, color: Colors.black.withOpacity(0.5))]
+                          ),
+                        ),
                   ),
+                  // -----------------------------
                 ),
                 const SizedBox(height: 16),
                 Center(
                   child: Text(
-                    'Исследователь', // (Ваш титул)
+                    username, // <-- 4. ИСПОЛЬЗУЕМ РЕАЛЬНОЕ ИМЯ
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                 ),
                 const SizedBox(height: 24),
                 
+                // Прогресс Уровня
                 Text("Прогресс до Уровня ${currentLevel + 1}", style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
-                  value: levelProgress,
+                  value: levelProgress.isNaN ? 0.0 : levelProgress, // Защита от деления на ноль
                   minHeight: 10,
                   borderRadius: BorderRadius.circular(5),
                 ),
                 const SizedBox(height: 8),
-                Text("$currentPoints / $pointsForNextLevel XP"),
+                // Отображаем реальный опыт
+                Text("$currentPoints XP"), 
                 
                 const Divider(height: 40),
 
+                // Статистика (все еще частично фейковая)
                 Text("Статистика", style: Theme.of(context).textTheme.headlineSmall),
                 const SizedBox(height: 16),
                 Text(

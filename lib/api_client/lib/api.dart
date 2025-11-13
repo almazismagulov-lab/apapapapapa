@@ -3,8 +3,9 @@ library api;
 
 import 'package:dio/dio.dart';
 import 'api/auth_api.dart';
+import 'api/profile_api.dart'; // <-- 1. ИМПОРТИРУЕМ НОВЫЙ ФАЙЛ
 
-// Экспортируем все наши модели, чтобы их можно было импортировать из одного места
+// Экспортируем все наши модели
 export 'model/login_request.dart';
 export 'model/auth_response.dart';
 export 'model/user_dto.dart';
@@ -18,12 +19,14 @@ export 'model/logout_request.dart';
 class NomadGisApi {
   final Dio _dio;
   late final AuthApi auth;
-  // TODO: Добавьте здесь PointsApi, ProfileApi и т.д.
+  late final ProfileApi profile; // <-- 2. ДОБАВЛЯЕМ PROFILE API
+  // TODO: Добавьте здесь PointsApi, GameApi и т.д.
 
   NomadGisApi(this._dio) {
     // Инициализируем все API-секции
     auth = AuthApi(_dio);
+    profile = ProfileApi(_dio); // <-- 3. ИНИЦИАЛИЗИРУЕМ ЕГО
     // points = PointsApi(_dio);
-    // profile = ProfileApi(_dio);
+    // game = GameApi(_dio);
   }
 }
