@@ -114,28 +114,49 @@ class _MapScreenState extends State<MapScreen> {
                     userAgentPackageName: 'com.example.astana_explorer',
                   ),
 
-                  // 2. СЛОЙ ТУМАНА ВОЙНЫ
-                  PolygonLayer(
-                    polygons: [
-                      Polygon(
-                        // Большой прямоугольник, покрывающий Астану
-                        points: [
-                          LatLng(51.3, 71.2),
-                          LatLng(51.3, 71.7),
-                          LatLng(51.0, 71.7),
-                          LatLng(51.0, 71.2),
+                  // 2. СЛОЙ ТУМАНА ВОЙНЫ (с градиентом)
+                  ShaderMask(
+                    // Этот BlendMode применяет градиент (shader)
+                    // к форме нашего полигона (child)
+                    blendMode: BlendMode.srcIn, 
+                    
+                    // Используем градиент для заливки тумана
+                    shaderCallback: (Rect bounds) {
+                      return LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          // Вы можете настроить эти цвета
+                          Colors.indigo.shade900.withOpacity(0.75),
+                          Colors.black.withOpacity(0.65),
                         ],
-                        
-                        // Полупрозрачность
-                        color: Colors.black.withOpacity(0.6), 
+                        stops: const [0.0, 0.7], // Делаем переход более плавным
+                      ).createShader(bounds);
+                    },
+                    
+                    // Сам PolygonLayer теперь просто "трафарет"
+                    child: PolygonLayer(
+                      polygons: [
+                        Polygon(
+                          // Большой прямоугольник, покрывающий Астану
+                          points: [
+                            LatLng(51.3, 71.2),
+                            LatLng(51.3, 71.7),
+                            LatLng(51.0, 71.7),
+                            LatLng(51.0, 71.2),
+                          ],
+                          
+                          // Важно: цвет должен быть НЕ прозрачным
+                          color: Colors.white, 
 
-                        isFilled: true,
-                        borderColor: Colors.transparent,
-                        
-                        // Передаем наш ОБЪЕДИНЕННЫЙ список "дыр"
-                        holePointsList: allHoles,
-                      ),
-                    ],
+                          isFilled: true,
+                          borderColor: Colors.transparent,
+                          
+                          // Дыры остаются теми же
+                          holePointsList: allHoles,
+                        ),
+                      ],
+                    ),
                   ),
 
                   // 3. Слой маркеров (Достопримечательности)

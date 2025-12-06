@@ -12,7 +12,8 @@ class ProfileScreen extends StatelessWidget {
 
   Future<void> _logout(BuildContext context) async {
     try {
-      await ApiService.instance.logout();
+      // Вызываем новый метод через Provider
+      await Provider.of<GameProvider>(context, listen: false).logoutAndClear();
       
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
@@ -70,24 +71,32 @@ class ProfileScreen extends StatelessWidget {
                   // --- 3. ОБНОВЛЕННЫЙ АВАТАР ---
                   child: CircleAvatar(
                     radius: 50,
-                    // Используем фон по умолчанию, если URL нет
                     backgroundColor: Colors.teal.shade800,
-                    // Загружаем аватарку по URL (та, которую вы прислали)
-                    backgroundImage: avatarUrl != null
-                        ? CachedNetworkImageProvider(avatarUrl)
-                        : null, 
-                    child: avatarUrl == null 
-                      // Если URL нет, показываем иконку
-                      ? const Icon(Icons.person, size: 50, color: Colors.white)
-                      // Если URL есть, показываем уровень поверх
-                      : Text( 
-                          currentLevel.toString(),
-                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            color: Colors.white,
-                            // Тень для читаемости
-                            shadows: [Shadow(blurRadius: 4, color: Colors.black.withOpacity(0.5))]
-                          ),
-                        ),
+                    // Используем ClipOval, чтобы обрезать виджет
+                    child: ClipOval(
+                      child: avatarUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: avatarUrl,
+                              fit: BoxFit.cover, // Растягиваем, чтобы заполнить круг
+                              width: 100, // (radius * 2)
+                              height: 100, // (radius * 2)
+                              
+                              // Виджет во время загрузки
+                              placeholder: (context, url) => const CircularProgressIndicator(),
+                              
+                              // Виджет, если произошла ошибка
+                              errorWidget: (context, url, error) => const Icon(
+                                Icons.error, // Иконка ошибки
+                                size: 50,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon( // Если URL == null
+                              Icons.person,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                    ),
                   ),
                   // -----------------------------
                 ),

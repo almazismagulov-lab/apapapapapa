@@ -64,7 +64,7 @@ class GameProvider with ChangeNotifier {
     startLocationTracking();
     // Загружаем и ФЕЙКОВЫЕ данные, и РЕАЛЬНЫЕ из API
     await loadProgress(); // Загружает локальные ачивки/точки (пока что)
-    await fetchUserProfile(); // <-- 4. ВЫЗЫВАЕМ ЗАГРУЗКУ ПРОФИЛЯ
+    //await fetchUserProfile(); // <-- Этот вызов мы убрали
   }
 
   // --- 5. НОВАЯ ФУНКЦИЯ ЗАГРУЗКИ ПРОФИЛЯ ---
@@ -207,6 +207,27 @@ class GameProvider with ChangeNotifier {
     print("Локальный прогресс (ачивки/точки) загружен!");
     notifyListeners();
   }
+
+  // --- НОВЫЙ МЕТОД ЗДЕСЬ ---
+  // Метод для полного выхода и очистки
+  Future<void> logoutAndClear() async {
+    try {
+      await ApiService.instance.logout(); // Вызываем API и стираем токены
+    } catch (e) {
+      print("Ошибка при вызове /logout (но мы все равно выходим): $e");
+    } finally {
+      _currentUser = null; // Стираем локальный кэш профиля
+      _points = 0; // (если используете фейковые очки, тоже сбросьте)
+      
+      // Очищаем и другие локальные данные
+      _discoveredLandmarkIds.clear();
+      _unlockedAchievementIds.clear();
+      await _saveProgress(); // Сохраняем "пустоту"
+
+      notifyListeners(); // Уведомляем UI, что пользователя больше нет
+    }
+  }
+  // --- КОНЕЦ НОВОГО МЕТОДА ---
 
   @override
   void dispose() {

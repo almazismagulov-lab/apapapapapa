@@ -4,6 +4,11 @@ import 'package:astana_explorer/services/api_service.dart'; // <-- ТЕПЕРЬ 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
+// --- ИМПОРТЫ, КОТОРЫЕ НУЖНО ДОБАВИТЬ ---
+import 'package:astana_explorer/providers/game_provider.dart';
+import 'package:provider/provider.dart';
+// ------------------------------------
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -38,6 +43,15 @@ class _LoginScreenState extends State<LoginScreen> {
       if (authData != null && authData.accessToken.isNotEmpty) {
         // Сохраняем токены через наш сервис
         await _apiService.saveTokens(authData, _deviceId);
+
+        // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+        if (mounted) {
+          // Получаем GameProvider и заставляем его обновить профиль
+          // Теперь, когда токен сохранен, этот запрос будет авторизован
+          await Provider.of<GameProvider>(context, listen: false).fetchUserProfile();
+        }
+        // --- КОНЕЦ ИСПРАВЛЕНИЯ ---
+
         final avatarka = response.data!.user.avatarUrl;
         print(avatarka);
 
