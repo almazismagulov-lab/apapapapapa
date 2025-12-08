@@ -207,7 +207,26 @@ class GameProvider with ChangeNotifier {
     print("Локальный прогресс (ачивки/точки) загружен!");
     notifyListeners();
   }
+  // Метод для обработки QR-кода
+  String processQrCode(String qrContent) {
+    // 1. Ищем достопримечательность с таким ID
+    try {
+      final landmark = allLandmarks.firstWhere((lm) => lm.id == qrContent);
 
+      // 2. Проверяем, не открыта ли она уже
+      if (isLandmarkDiscovered(landmark.id)) {
+        return "Вы уже открыли ${landmark.name}!";
+      }
+
+      // 3. Открываем её! (Игнорируем дистанцию, так как QR код — это доказательство присутствия)
+      _discoverLandmark(landmark);
+      return "Отлично! Вы открыли: ${landmark.name}";
+      
+    } catch (e) {
+      // Если ID не найден в списке allLandmarks
+      return "Неизвестный QR-код или объект не найден.";
+    }
+  }
   // --- НОВЫЙ МЕТОД ЗДЕСЬ ---
   // Метод для полного выхода и очистки
   Future<void> logoutAndClear() async {

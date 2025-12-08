@@ -1,6 +1,7 @@
 import 'package:astana_explorer/screens/achievements_screen.dart';
 import 'package:astana_explorer/screens/map_screen.dart';
 import 'package:astana_explorer/screens/profile_screen.dart';
+import 'package:astana_explorer/screens/qr_scan_screen.dart'; // <-- Импорт
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,6 +30,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _widgetOptions.elementAt(_selectedIndex),
+      
+      // --- ДОБАВЛЯЕМ КНОПКУ QR ---
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const QrScanScreen()),
+          );
+        },
+        child: const Icon(Icons.qr_code_scanner),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      // ----------------------------
+
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
